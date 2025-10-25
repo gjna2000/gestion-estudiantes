@@ -6,12 +6,12 @@
 - [ ] Instalar Git
 - [ ] Crear cuenta en GitHub
 - [ ] Crear repositorio "gestion-estudiantes"
-- [ ] Invitar a Estudiante 1 y 2 como colaboradores
+- [ ] Invitar a Estudiante Jorge Sebastian Ortiz Humo y Miller Marlow Martinez Martinez como colaboradores
 - [ ] Configurar Git local
 - [ ] Clonar repositorio
 
 #### MARTES 
-- [ ] Verificar que Est. 1 y 2 aceptaron invitación
+- [ ] Verificar que Est. Jorge Sebastian Ortiz Humo y Miller Marlow Martinez Martinez aceptaron invitación
 - [ ] Editar README.md con información completa del proyecto
 - [ ] Crear carpeta `docs/`
 - [ ] Crear archivo `docs/TAREAS.md` (este archivo)
@@ -35,7 +35,7 @@
   - Plan de pruebas para Login/Registro
   - Plan de pruebas para Materias
   - Plantilla para reportar bugs
-- [ ] Esperar a que Est. 2 configure Firebase
+- [ ] Esperar a que Est. Miller Marlow Martinez Martinez configure Firebase
 - [ ] Revisar avances del equipo
 
 #### VIERNES 
@@ -55,7 +55,7 @@
 - [ ] Actualizar proyecto: `git pull`
 - [ ] Probar componente Login visualmente
 - [ ] Verificar estilos según guía de diseño
-- [ ] Reportar problemas visuales a Est. 1
+- [ ] Reportar problemas visuales a Est. Jorge Sebastian Ortiz Humo
 - [ ] Actualizar `PRUEBAS.md` con resultados
 
 #### MARTES 
