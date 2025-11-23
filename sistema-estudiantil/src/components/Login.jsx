@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
-function Login({ onLogin }) {
+function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -21,7 +21,7 @@ function Login({ onLogin }) {
         // Iniciar sesión
         await signInWithEmailAndPassword(auth, email, password);
       }
-      onLogin();
+      onLoginSuccess();
     } catch (err) {
       setError(err.message);
     }

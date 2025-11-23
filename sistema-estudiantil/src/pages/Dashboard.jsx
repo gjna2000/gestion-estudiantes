@@ -1,53 +1,48 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
-import { signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { generarRecomendaciones } from '../utils/recomendaciones';
+import Recomendaciones from '../components/Recomendaciones';
 
 function Dashboard() {
   const [materias, setMaterias] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    nota: '',
-    creditos: '',
-  });
+  const [recomendaciones, setRecomendaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarMaterias();
   }, []);
 
   const cargarMaterias = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-    const q = query(
-      collection(db, 'materias'),
-      where('userId', '==', user.uid)
-    );
-    const snapshot = await getDocs(q);
-    const materiasData = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setMaterias(materiasData);
-  };
-
-  const agregarMateria = async (e) => {
-    e.preventDefault();
-    const user = auth.currentUser;
-
-    await addDoc(collection(db, 'materias'), {
-      userId: user.uid,
-      nombre: formData.nombre,
-      nota: parseFloat(formData.nota),
-      creditos: parseInt(formData.creditos),
-      fecha: new Date(),
-    });
-
-    setFormData({ nombre: '', nota: '', creditos: '' });
-    setShowForm(false);
-    cargarMaterias();
+      const q = query(
+        collection(db, 'materias'),
+        where('userId', '==', user.uid)
+      );
+      const snapshot = await getDocs(q);
+      const materiasData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      
+      setMaterias(materiasData);
+      
+      // Generar recomendaciones basadas en las materias
+      const recs = generarRecomendaciones(materiasData);
+      setRecomendaciones(recs);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error cargando materias:', error);
+      setLoading(false);
+    }
   };
 
   const calcularPromedio = () => {
@@ -68,88 +63,53 @@ function Dashboard() {
     return '🟢 Buen rendimiento';
   };
 
-  const handleLogout = () => {
-    signOut(auth);
-  };
+  if (loading) {
+    return (
+      <div style={styles.loading}>
+        <h2>Cargando datos...</h2>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
-      <header style={styles.header}>
-        <h1>📚 Dashboard Académico</h1>
-        <button onClick={handleLogout} style={styles.logoutBtn}>
-          Cerrar sesión
-        </button>
-      </header>
-
-      <div style={styles.content}>
-        <div style={styles.statsCard}>
-          <h2>Estadísticas Generales</h2>
-          <div style={styles.stats}>
-            <div style={styles.statItem}>
-              <span style={styles.statValue}>{materias.length}</span>
-              <span style={styles.statLabel}>Materias</span>
-            </div>
-            <div style={styles.statItem}>
-              <span style={styles.statValue}>{calcularPromedio()}</span>
-              <span style={styles.statLabel}>Promedio</span>
-            </div>
+      {/* Estadísticas Generales */}
+      <div style={styles.statsCard}>
+        <h2 style={styles.sectionTitle}>📊 Estadísticas Generales</h2>
+        <div style={styles.stats}>
+          <div style={styles.statItem}>
+            <span style={styles.statValue}>{materias.length}</span>
+            <span style={styles.statLabel}>Materias</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={{...styles.statValue, color: getColorNota(parseFloat(calcularPromedio()))}}>
+              {calcularPromedio()}
+            </span>
+            <span style={styles.statLabel}>Promedio</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statValue}>
+              {materias.filter(m => m.nota < 3.0).length}
+            </span>
+            <span style={styles.statLabel}>En Riesgo</span>
           </div>
         </div>
+      </div>
 
-        <div style={styles.actions}>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            style={styles.addBtn}
-          >
-            + Agregar Materia
-          </button>
-        </div>
-
-        {showForm && (
-          <form onSubmit={agregarMateria} style={styles.form}>
-            <input
-              type="text"
-              placeholder="Nombre de la materia"
-              value={formData.nombre}
-              onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-              style={styles.input}
-              required
-            />
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="5"
-              placeholder="Nota (0-5)"
-              value={formData.nota}
-              onChange={(e) => setFormData({...formData, nota: e.target.value})}
-              style={styles.input}
-              required
-            />
-            <input
-              type="number"
-              min="1"
-              placeholder="Créditos"
-              value={formData.creditos}
-              onChange={(e) => setFormData({...formData, creditos: e.target.value})}
-              style={styles.input}
-              required
-            />
-            <button type="submit" style={styles.submitBtn}>
-              Guardar
-            </button>
-          </form>
-        )}
-
-        <div style={styles.materiasList}>
-          <h2>Mis Materias</h2>
-          {materias.length === 0 ? (
-            <p style={styles.empty}>No tienes materias registradas</p>
-          ) : (
-            materias.map((materia) => (
+      {/* Lista de Materias */}
+      <div style={styles.materiasCard}>
+        <h2 style={styles.sectionTitle}>📚 Mis Materias</h2>
+        {materias.length === 0 ? (
+          <div style={styles.empty}>
+            <p>No tienes materias registradas</p>
+            <p style={styles.emptyHint}>Ve a "Registrar Nota" para agregar tus materias</p>
+          </div>
+        ) : (
+          <div style={styles.materiasList}>
+            {materias.map((materia) => (
               <div key={materia.id} style={styles.materiaCard}>
                 <div style={styles.materiaInfo}>
-                  <h3>{materia.nombre}</h3>
+                  <h3 style={styles.materiaNombre}>{materia.nombre}</h3>
                   <p style={styles.creditos}>{materia.creditos} créditos</p>
                 </div>
                 <div style={styles.materiaNote}>
@@ -166,129 +126,110 @@ function Dashboard() {
                   </span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Sistema de Recomendaciones */}
+      <Recomendaciones recomendaciones={recomendaciones} />
     </div>
   );
 }
 
 const styles = {
   container: {
-    minHeight: '100vh',
-    background: '#f5f5f5',
-  },
-  header: {
-    background: '#667eea',
-    color: 'white',
     padding: '20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  logoutBtn: {
-    background: 'white',
-    color: '#667eea',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-  content: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '20px',
+  },
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '400px',
+    color: '#666',
   },
   statsCard: {
     background: 'white',
-    padding: '20px',
+    padding: '25px',
     borderRadius: '10px',
     marginBottom: '20px',
     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
   },
+  sectionTitle: {
+    marginTop: 0,
+    marginBottom: '20px',
+    color: '#333',
+    fontSize: '24px',
+  },
   stats: {
-    display: 'flex',
-    gap: '40px',
-    marginTop: '20px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: '20px',
   },
   statItem: {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
+    padding: '15px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
   },
   statValue: {
-    fontSize: '36px',
+    fontSize: '42px',
     fontWeight: 'bold',
     color: '#667eea',
+    marginBottom: '5px',
   },
   statLabel: {
     color: '#666',
-    marginTop: '5px',
+    fontSize: '14px',
   },
-  actions: {
-    marginBottom: '20px',
-  },
-  addBtn: {
-    background: '#00C851',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    fontWeight: 'bold',
-  },
-  form: {
+  materiasCard: {
     background: 'white',
-    padding: '20px',
+    padding: '25px',
     borderRadius: '10px',
     marginBottom: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  input: {
-    padding: '12px',
-    fontSize: '16px',
-    border: '2px solid #ddd',
-    borderRadius: '5px',
-    outline: 'none',
-  },
-  submitBtn: {
-    background: '#667eea',
-    color: 'white',
-    border: 'none',
-    padding: '12px',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-  materiasList: {
-    background: 'white',
-    padding: '20px',
-    borderRadius: '10px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
   },
   empty: {
     textAlign: 'center',
+    padding: '60px 20px',
     color: '#666',
-    padding: '40px',
+  },
+  emptyHint: {
+    fontSize: '14px',
+    color: '#999',
+    marginTop: '10px',
+  },
+  materiasList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
   },
   materiaCard: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '15px',
+    padding: '20px',
     border: '2px solid #eee',
-    borderRadius: '5px',
-    marginBottom: '10px',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+    cursor: 'pointer',
   },
   materiaInfo: {
     flex: 1,
   },
+  materiaNombre: {
+    margin: '0 0 5px 0',
+    fontSize: '18px',
+    color: '#333',
+  },
   creditos: {
     color: '#666',
     fontSize: '14px',
+    margin: 0,
   },
   materiaNote: {
     display: 'flex',
@@ -296,12 +237,12 @@ const styles = {
     alignItems: 'flex-end',
   },
   nota: {
-    fontSize: '28px',
+    fontSize: '32px',
     fontWeight: 'bold',
+    marginBottom: '5px',
   },
   estado: {
-    fontSize: '14px',
-    marginTop: '5px',
+    fontSize: '13px',
   },
 };
 
