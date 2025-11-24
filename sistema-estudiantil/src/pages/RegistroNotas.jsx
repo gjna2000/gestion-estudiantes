@@ -1,6 +1,6 @@
 // src/pages/RegistroNotas.jsx
-import React, { useState } from 'react';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import Card from '../components/Card';
 import Alert from '../components/Alert';
@@ -12,10 +12,13 @@ const RegistroNotas = () => {
         notaParcial: '',
         notaQuiz: '',
         creditos: '',
+        temaActual: '',
     });
     
     const [loading, setLoading] = useState(false);
     const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
+    const [materiasUsuario, setMateriasUsuario] = useState([]);
+    const [loadingMaterias, setLoadingMaterias] = useState(true);
     
     // Configuración de cortes con porcentajes
     const configCortes = {
@@ -36,6 +39,39 @@ const RegistroNotas = () => {
             total: 30,
             parcial: 20, 
             quiz: 10 
+        }
+    };
+
+    // Cargar materias del usuario al montar el componente
+    useEffect(() => {
+        cargarMateriasUsuario();
+    }, []);
+
+    const cargarMateriasUsuario = async () => {
+        try {
+            const user = auth.currentUser;
+            if (!user) {
+                console.log('No hay usuario autenticado');
+                setLoadingMaterias(false);
+                return;
+            }
+
+            console.log('Usuario ID:', user.uid);
+            const userDoc = await getDoc(doc(db, 'usuarios', user.uid));
+            
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                console.log('Datos del usuario:', userData);
+                console.log('Materias del usuario:', userData.materias);
+                setMateriasUsuario(userData.materias || []);
+            } else {
+                console.log('No se encontró el documento del usuario');
+                setMateriasUsuario([]);
+            }
+            setLoadingMaterias(false);
+        } catch (error) {
+            console.error('Error cargando materias:', error);
+            setLoadingMaterias(false);
         }
     };
 
@@ -74,7 +110,7 @@ const RegistroNotas = () => {
 
             // Validaciones
             if (!formData.materia.trim()) {
-                setMensaje({ tipo: 'danger', texto: 'El nombre de la materia es obligatorio' });
+                setMensaje({ tipo: 'danger', texto: 'Debes seleccionar una materia' });
                 setLoading(false);
                 return;
             }
@@ -113,7 +149,6 @@ const RegistroNotas = () => {
                     tipo: 'warning', 
                     texto: `Ya existe una nota registrada para ${config.label} de ${formData.materia}. Si continúas, se reemplazará.` 
                 });
-                // En producción, aquí podrías actualizar en vez de crear uno nuevo
             }
 
             // Guardar en Firebase
@@ -127,13 +162,14 @@ const RegistroNotas = () => {
                 notaCorte: parseFloat(notaCorte.toFixed(2)),
                 porcentajeTotal: config.total,
                 creditos: creditos,
+                temaActual: formData.temaActual.trim() || 'No especificado',
                 fecha: new Date(),
                 timestamp: Date.now()
             });
 
             // Determinar mensaje según resultado
             let tipoAlerta = 'success';
-            let mensajeAlerta = `✅ ${config.label} registrado con éxito!\n`;
+            let mensajeAlerta = `✅ ${config.label} de ${formData.materia} registrado con éxito!\n`;
             mensajeAlerta += `Parcial: ${notaParcial.toFixed(1)} × ${config.parcial}% = ${((notaParcial * config.parcial) / 100).toFixed(2)}\n`;
             mensajeAlerta += `Quiz: ${notaQuiz.toFixed(1)} × ${config.quiz}% = ${((notaQuiz * config.quiz) / 100).toFixed(2)}\n`;
             mensajeAlerta += `Nota del corte: ${notaCorte.toFixed(2)} de ${(config.total / 100).toFixed(2)} (${((notaCorte / (config.total / 100)) * 100).toFixed(1)}%)`;
@@ -151,11 +187,12 @@ const RegistroNotas = () => {
             
             // Resetear formulario
             setFormData({ 
-                materia: formData.materia, // Mantener materia para facilitar registro de otros cortes
+                materia: formData.materia,
                 corte: '', 
                 notaParcial: '',
                 notaQuiz: '',
-                creditos: formData.creditos // Mantener créditos
+                creditos: formData.creditos,
+                temaActual: ''
             });
             
         } catch (error) {
@@ -190,27 +227,46 @@ const RegistroNotas = () => {
             <Card title="Ingresar Notas por Corte">
                 <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '15px' }}>
                     
-                    {/* Nombre de Materia */}
+                    {/* Campo 1: Materia (Dropdown) */}
                     <div>
                         <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
                             Nombre de la Materia: <span style={{ color: 'red' }}>*</span>
                         </label>
-                        <input
-                            type="text"
-                            name="materia"
-                            value={formData.materia}
-                            onChange={handleChange}
-                            placeholder="Ej: Cálculo Integral"
-                            required
-                            disabled={loading}
-                            style={{ 
-                                width: '100%', 
-                                padding: '10px', 
-                                borderRadius: '5px',
-                                border: '1px solid #ccc',
-                                fontSize: '14px'
-                            }}
-                        />
+                        {loadingMaterias ? (
+                            <p style={{ color: '#666', padding: '10px', background: '#f8f9fa', borderRadius: '5px' }}>
+                                ⏳ Cargando tus materias...
+                            </p>
+                        ) : materiasUsuario.length === 0 ? (
+                            <Alert type="warning">
+                                No tienes materias registradas. Por favor, contacta al administrador o cierra sesión y regístrate nuevamente con tus materias.
+                            </Alert>
+                        ) : (
+                            <select
+                                name="materia"
+                                value={formData.materia}
+                                onChange={handleChange}
+                                required
+                                disabled={loading}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px', 
+                                    borderRadius: '5px',
+                                    border: '2px solid #ddd',
+                                    fontSize: '14px',
+                                    background: 'white'
+                                }}
+                            >
+                                <option value="">-- Selecciona una materia --</option>
+                                {materiasUsuario.map((materia, index) => (
+                                    <option key={index} value={materia}>
+                                        {materia}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        <p style={{ fontSize: '12px', color: '#666', margin: '5px 0 0 0' }}>
+                            💡 Solo puedes registrar notas para las materias que indicaste en el registro
+                        </p>
                     </div>
 
                     {/* Créditos */}
@@ -334,16 +390,17 @@ const RegistroNotas = () => {
                             }}
                         />
                     </div>
+
                     
                     {/* Botón */}
                     <button 
                         type="submit" 
                         className="btn-primary" 
-                        disabled={loading}
+                        disabled={loading || materiasUsuario.length === 0}
                         style={{ 
                             marginTop: '10px',
-                            opacity: loading ? 0.6 : 1,
-                            cursor: loading ? 'not-allowed' : 'pointer'
+                            opacity: (loading || materiasUsuario.length === 0) ? 0.6 : 1,
+                            cursor: (loading || materiasUsuario.length === 0) ? 'not-allowed' : 'pointer'
                         }}
                     >
                         {loading ? '⏳ Guardando...' : '📝 Registrar Notas'}
