@@ -5,7 +5,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 
 const Layout = ({ children }) => {
-    const [userName, setUserName] = useState("Cargando...");
+    const [userName, setUserName] = useState ();
 
     useEffect(() => {
         cargarDatosUsuario();
