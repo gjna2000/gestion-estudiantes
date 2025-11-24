@@ -6,15 +6,16 @@ import { generarRecomendaciones } from '../utils/recomendaciones';
 import Recomendaciones from '../components/Recomendaciones';
 
 function Dashboard() {
-  const [materias, setMaterias] = useState([]);
+  const [evaluaciones, setEvaluaciones] = useState([]);
+  const [materiasProcesadas, setMateriasProcesadas] = useState([]);
   const [recomendaciones, setRecomendaciones] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    cargarMaterias();
+    cargarEvaluaciones();
   }, []);
 
-  const cargarMaterias = async () => {
+  const cargarEvaluaciones = async () => {
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -22,33 +23,88 @@ function Dashboard() {
         return;
       }
 
+      // Cargar todas las evaluaciones del usuario
       const q = query(
-        collection(db, 'materias'),
+        collection(db, 'evaluaciones'),
         where('userId', '==', user.uid)
       );
       const snapshot = await getDocs(q);
-      const materiasData = snapshot.docs.map(doc => ({
+      const evaluacionesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       }));
       
-      setMaterias(materiasData);
+      setEvaluaciones(evaluacionesData);
       
-      // Generar recomendaciones basadas en las materias
-      const recs = generarRecomendaciones(materiasData);
+      // Procesar y agrupar por materia
+      const materias = procesarMaterias(evaluacionesData);
+      setMateriasProcesadas(materias);
+      
+      // Generar recomendaciones basadas en las materias procesadas
+      const recs = generarRecomendaciones(materias);
       setRecomendaciones(recs);
       
       setLoading(false);
     } catch (error) {
-      console.error('Error cargando materias:', error);
+      console.error('Error cargando evaluaciones:', error);
       setLoading(false);
     }
   };
 
+  const procesarMaterias = (evaluacionesData) => {
+    // Agrupar evaluaciones por materia
+    const materiaMap = {};
+    
+    evaluacionesData.forEach(evaluacion => {
+      if (!materiaMap[evaluacion.materia]) {
+        materiaMap[evaluacion.materia] = {
+          nombre: evaluacion.materia,
+          creditos: evaluacion.creditos,
+          cortes: {},
+          evaluaciones: []
+        };
+      }
+      
+      // Guardar evaluación por corte
+      materiaMap[evaluacion.materia].cortes[evaluacion.corte] = {
+        notaCorte: evaluacion.notaCorte,
+        notaParcial: evaluacion.notaParcial,
+        notaQuiz: evaluacion.notaQuiz,
+        corteLabel: evaluacion.corteLabel,
+        porcentajeTotal: evaluacion.porcentajeTotal
+      };
+      
+      materiaMap[evaluacion.materia].evaluaciones.push(evaluacion);
+    });
+    
+    // Convertir a array y calcular nota final
+    const materiasArray = Object.values(materiaMap).map(materia => {
+      // Sumar todos los cortes registrados
+      const notaFinal = Object.values(materia.cortes).reduce((sum, corte) => {
+        return sum + corte.notaCorte;
+      }, 0);
+      
+      // Detectar cortes en riesgo
+      const cortesEnRiesgo = Object.entries(materia.cortes)
+        .filter(([_, corte]) => corte.notaCorte < 0.9)
+        .map(([key, corte]) => corte.corteLabel);
+      
+      return {
+        ...materia,
+        nota: parseFloat(notaFinal.toFixed(2)),
+        cortesRegistrados: Object.keys(materia.cortes).length,
+        cortesEnRiesgo: cortesEnRiesgo,
+        enRiesgo: cortesEnRiesgo.length > 0 || notaFinal < 3.0
+      };
+    });
+    
+    return materiasArray;
+  };
+
   const calcularPromedio = () => {
-    if (materias.length === 0) return 0;
-    const suma = materias.reduce((acc, m) => acc + m.nota, 0);
-    return (suma / materias.length).toFixed(2);
+    if (materiasProcesadas.length === 0) return 0;
+    const suma = materiasProcesadas.reduce((acc, m) => acc + m.nota, 0);
+    return (suma / materiasProcesadas.length).toFixed(2);
   };
 
   const getColorNota = (nota) => {
@@ -78,7 +134,7 @@ function Dashboard() {
         <h2 style={styles.sectionTitle}>📊 Estadísticas Generales</h2>
         <div style={styles.stats}>
           <div style={styles.statItem}>
-            <span style={styles.statValue}>{materias.length}</span>
+            <span style={styles.statValue}>{materiasProcesadas.length}</span>
             <span style={styles.statLabel}>Materias</span>
           </div>
           <div style={styles.statItem}>
@@ -88,10 +144,14 @@ function Dashboard() {
             <span style={styles.statLabel}>Promedio</span>
           </div>
           <div style={styles.statItem}>
-            <span style={styles.statValue}>
-              {materias.filter(m => m.nota < 3.0).length}
+            <span style={{...styles.statValue, color: '#ff4444'}}>
+              {materiasProcesadas.filter(m => m.enRiesgo).length}
             </span>
             <span style={styles.statLabel}>En Riesgo</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statValue}>{evaluaciones.length}</span>
+            <span style={styles.statLabel}>Evaluaciones</span>
           </div>
         </div>
       </div>
@@ -99,30 +159,68 @@ function Dashboard() {
       {/* Lista de Materias */}
       <div style={styles.materiasCard}>
         <h2 style={styles.sectionTitle}>📚 Mis Materias</h2>
-        {materias.length === 0 ? (
+        {materiasProcesadas.length === 0 ? (
           <div style={styles.empty}>
             <p>No tienes materias registradas</p>
-            <p style={styles.emptyHint}>Ve a "Registrar Nota" para agregar tus materias</p>
+            <p style={styles.emptyHint}>Ve a "Nota del Registrador" para agregar tus calificaciones</p>
           </div>
         ) : (
           <div style={styles.materiasList}>
-            {materias.map((materia) => (
-              <div key={materia.id} style={styles.materiaCard}>
+            {materiasProcesadas.map((materia, index) => (
+              <div key={index} style={styles.materiaCard}>
                 <div style={styles.materiaInfo}>
                   <h3 style={styles.materiaNombre}>{materia.nombre}</h3>
                   <p style={styles.creditos}>{materia.creditos} créditos</p>
+                  
+                  {/* Mostrar detalles de cortes */}
+                  <div style={styles.cortesDetalle}>
+                    {Object.entries(materia.cortes).map(([key, corte]) => (
+                      <div key={key} style={styles.corteItem}>
+                        <span style={styles.corteLabel}>{corte.corteLabel}:</span>
+                        <span style={{
+                          ...styles.corteNota,
+                          color: corte.notaCorte < 0.9 ? '#ff4444' : '#666'
+                        }}>
+                          {corte.notaCorte.toFixed(2)}
+                          {corte.notaCorte < 0.9 && ' ⚠️'}
+                        </span>
+                        <span style={styles.corteDetalle}>
+                          (P: {corte.notaParcial.toFixed(1)} | Q: {corte.notaQuiz.toFixed(1)})
+                        </span>
+                      </div>
+                    ))}
+                    
+                    {/* Mostrar cortes faltantes */}
+                    {materia.cortesRegistrados < 3 && (
+                      <div style={styles.corteFaltante}>
+                        <span>⏳ Faltan {3 - materia.cortesRegistrados} corte(s) por registrar</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Alertas de cortes en riesgo */}
+                  {materia.cortesEnRiesgo.length > 0 && (
+                    <div style={styles.alertaRiesgo}>
+                      🔴 Cortes en riesgo: {materia.cortesEnRiesgo.join(', ')}
+                    </div>
+                  )}
                 </div>
+                
                 <div style={styles.materiaNote}>
+                  <span style={styles.notaLabel}>Nota Actual:</span>
                   <span
                     style={{
                       ...styles.nota,
                       color: getColorNota(materia.nota),
                     }}
                   >
-                    {materia.nota.toFixed(1)}
+                    {materia.nota.toFixed(2)}
                   </span>
                   <span style={styles.estado}>
                     {getEstadoNota(materia.nota)}
+                  </span>
+                  <span style={styles.progreso}>
+                    ({materia.cortesRegistrados}/3 cortes)
                   </span>
                 </div>
               </div>
@@ -140,7 +238,7 @@ function Dashboard() {
 const styles = {
   container: {
     padding: '20px',
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   loading: {
@@ -206,43 +304,95 @@ const styles = {
   materiasList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '15px',
   },
   materiaCard: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: '20px',
     border: '2px solid #eee',
     borderRadius: '8px',
     transition: 'all 0.2s',
-    cursor: 'pointer',
   },
   materiaInfo: {
     flex: 1,
   },
   materiaNombre: {
     margin: '0 0 5px 0',
-    fontSize: '18px',
+    fontSize: '20px',
     color: '#333',
   },
   creditos: {
     color: '#666',
     fontSize: '14px',
-    margin: 0,
+    margin: '0 0 15px 0',
+  },
+  cortesDetalle: {
+    marginTop: '10px',
+    padding: '10px',
+    background: '#f8f9fa',
+    borderRadius: '5px',
+  },
+  corteItem: {
+    display: 'flex',
+    gap: '10px',
+    padding: '5px 0',
+    fontSize: '14px',
+  },
+  corteLabel: {
+    fontWeight: 'bold',
+    minWidth: '70px',
+  },
+  corteNota: {
+    fontWeight: 'bold',
+    minWidth: '50px',
+  },
+  corteDetalle: {
+    color: '#666',
+    fontSize: '13px',
+  },
+  corteFaltante: {
+    marginTop: '8px',
+    padding: '8px',
+    background: '#fff3cd',
+    borderRadius: '4px',
+    fontSize: '13px',
+    color: '#856404',
+  },
+  alertaRiesgo: {
+    marginTop: '10px',
+    padding: '10px',
+    background: '#ffebee',
+    border: '1px solid #ff4444',
+    borderRadius: '5px',
+    fontSize: '13px',
+    color: '#c62828',
+    fontWeight: 'bold',
   },
   materiaNote: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
+    minWidth: '150px',
+  },
+  notaLabel: {
+    fontSize: '12px',
+    color: '#666',
+    marginBottom: '5px',
   },
   nota: {
-    fontSize: '32px',
+    fontSize: '36px',
     fontWeight: 'bold',
     marginBottom: '5px',
   },
   estado: {
     fontSize: '13px',
+    marginBottom: '5px',
+  },
+  progreso: {
+    fontSize: '12px',
+    color: '#999',
   },
 };
 
