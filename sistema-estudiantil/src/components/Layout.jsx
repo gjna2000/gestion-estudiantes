@@ -1,14 +1,18 @@
 import React from 'react';
+import { auth } from '../services/firebase';
 import Header from './Header'; 
 import Sidebar from './Sidebar';
 
 const Layout = ({ children }) => {
+    const user = auth.currentUser;
+    const userName = user?.email || "Usuario";
+    
     return (
         <div className="app-container">
             <Sidebar /> 
             
             <div className="main-content-wrapper">
-                <Header userName="Gonzalo Javier Niño Amarís" />
+                <Header userName={userName} />
                 <main className="content-area">
                     {children}
                 </main>
