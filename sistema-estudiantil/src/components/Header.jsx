@@ -1,24 +1,48 @@
+// src/components/Header.jsx
 import React from 'react';
+import './Header.css'; // Si tienes estilos
 
-
-const Header = ({ userName = 'Estudiante', systemName = 'Sistema de Gestión Estudiantil' }) => {
+const Header = ({ userName }) => {
     return (
-        <header className="header">
-            <div className="header-logo">
-                <span className="logo-icon">📚</span>
-                <h1 className="logo-text">{systemName}</h1>
-            </div>
-            
-            <div className="header-profile">
-                <span className="profile-text">HOLA,  {userName}</span>
-                <div className="profile-avatar">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
+        <header style={styles.header}>
+            <div style={styles.container}>
+                <h1 style={styles.title}>Sistema de Gestión Estudiantil</h1>
+                <div style={styles.userInfo}>
+                    <span style={styles.greeting}>Hola, {userName}</span>
                 </div>
             </div>
         </header>
     );
+};
+
+const styles = {
+    header: {
+        background: '#2c3e50',
+        color: 'white',
+        padding: '15px 20px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+    },
+    container: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        maxWidth: '1400px',
+        margin: '0 auto'
+    },
+    title: {
+        margin: 0,
+        fontSize: '24px',
+        fontWeight: 'bold'
+    },
+    userInfo: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
+    },
+    greeting: {
+        fontSize: '16px',
+        fontWeight: '500'
+    }
 };
 
 export default Header;

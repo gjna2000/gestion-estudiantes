@@ -1,3 +1,4 @@
+// src/components/Layout.jsx
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
@@ -5,7 +6,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 
 const Layout = ({ children }) => {
-    const [userName, setUserName] = useState ();
+    const [userName, setUserName] = useState("");
 
     useEffect(() => {
         cargarDatosUsuario();
@@ -25,7 +26,7 @@ const Layout = ({ children }) => {
                 const nombreCompleto = `${userData.nombre} ${userData.apellido}`;
                 setUserName(nombreCompleto);
             } else {
-                setUserName(user.email?.split('@')[0] || "Usuario");
+                setUserName("Estudiante");
             }
         } catch (error) {
             console.error('Error cargando datos:', error);

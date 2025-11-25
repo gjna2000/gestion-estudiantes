@@ -236,41 +236,15 @@ const Materias = () => {
                                                         {corte.notaCorte.toFixed(2)}
                                                         {corte.notaCorte < 0.9 && ' ⚠️'}
                                                     </span>
-                                                    <button
-                                                        onClick={() => eliminarEvaluacion(corte.id, materia.nombre, corte.corteLabel)}
-                                                        style={{
-                                                            background: '#ff4444',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '5px 10px',
-                                                            borderRadius: '5px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px'
-                                                        }}
-                                                    >
-                                                        🗑️ Eliminar
-                                                    </button>
+                                                   
+                                                   
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
 
-                                    {/* Botón eliminar materia completa */}
-                                    <button
-                                        onClick={() => eliminarMateria(materia)}
-                                        style={{
-                                            background: '#dc3545',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '10px 20px',
-                                            borderRadius: '5px',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            width: '100%'
-                                        }}
-                                    >
-                                        🗑️ Eliminar Materia Completa
-                                    </button>
+                                   
+                                    
                                 </div>
                             </div>
                         </Card>
