@@ -52,6 +52,7 @@ const Recomendaciones = () => {
                     nombre: evaluacion.materia,
                     creditos: evaluacion.creditos,
                     cortes: {},
+                    temas: []
                 };
             }
             
@@ -59,8 +60,14 @@ const Recomendaciones = () => {
                 notaCorte: evaluacion.notaCorte,
                 notaParcial: evaluacion.notaParcial,
                 notaQuiz: evaluacion.notaQuiz,
-                corteLabel: evaluacion.corteLabel
+                corteLabel: evaluacion.corteLabel,
+                temaActual: evaluacion.temaActual
             };
+            
+            // Agregar tema a la lista si existe
+            if (evaluacion.temaActual && evaluacion.temaActual !== 'No especificado') {
+                materiaMap[evaluacion.materia].temas.push(evaluacion.temaActual);
+            }
         });
         
         const materiasArray = Object.values(materiaMap).map(materia => {
@@ -76,7 +83,8 @@ const Recomendaciones = () => {
                 ...materia,
                 nota: parseFloat(notaFinal.toFixed(2)),
                 enRiesgo: cortesEnRiesgo.length > 0 || notaFinal < 3.0,
-                cortesEnRiesgo
+                cortesEnRiesgo,
+                temasTexto: materia.temas.join(', ') || 'No especificado'
             };
         });
         
@@ -92,13 +100,14 @@ const Recomendaciones = () => {
         setGenerandoIA(prev => ({ ...prev, [materia.nombre]: true }));
 
         const detallesCortes = Object.entries(materia.cortes)
-            .map(([key, corte]) => `${corte.corteLabel}: ${corte.notaCorte} (Parcial: ${corte.notaParcial}, Quiz: ${corte.notaQuiz})`)
+            .map(([key, corte]) => `${corte.corteLabel}: ${corte.notaCorte} (Parcial: ${corte.notaParcial}, Quiz: ${corte.notaQuiz}) - Tema: ${corte.temaActual || 'No especificado'}`)
             .join('\n');
 
         const recomendaciones = await generarRecomendacionesIA(
             materia.nombre,
             materia.nota,
-            detallesCortes
+            detallesCortes,
+            materia.temasTexto
         );
 
         setRecomendacionesIA(prev => ({
@@ -169,8 +178,11 @@ const Recomendaciones = () => {
                                         <h3 style={{ margin: '0 0 5px 0', color: '#ff4444' }}>
                                             🔴 ¡Acción Requerida! Tu nota en {materia.nombre} es {materia.nota.toFixed(2)}
                                         </h3>
+                                        <p style={{ margin: '0 0 5px 0', color: '#666' }}>
+                                            <strong>Temas actuales:</strong> {materia.temasTexto}
+                                        </p>
                                         <p style={{ margin: 0, color: '#666' }}>
-                                            **Foco de estudio:** Debes revisar urgentemente el tema de{' '}
+                                            **Foco de estudio:** Debes revisar urgentemente{' '}
                                             {materia.cortesEnRiesgo.length > 0 
                                                 ? materia.cortesEnRiesgo.join(', ') 
                                                 : 'todos los cortes'}.

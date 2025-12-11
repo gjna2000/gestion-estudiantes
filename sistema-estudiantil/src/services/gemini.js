@@ -1,9 +1,9 @@
 // src/services/gemini.js
 
-const GEMINI_API_KEY = 'AIzaSyDWYuN4_WSAo2wKHdxyISxVx1LPqF9BSjw'; // Reemplaza con tu API Key
+const GEMINI_API_KEY = 'TU_API_KEY_AQUI'; // Reemplaza con tu API Key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
-export async function generarRecomendacionesIA(materia, nota, notasDetalles) {
+export async function generarRecomendacionesIA(materia, nota, notasDetalles, temasActuales) {
   try {
     const prompt = `
 Eres un tutor académico experto. Analiza el rendimiento del estudiante y genera recomendaciones específicas.
@@ -13,36 +13,41 @@ NOTA ACTUAL: ${nota}/5.0
 DETALLES DE CORTES:
 ${notasDetalles}
 
+TEMAS QUE ESTÁ ESTUDIANDO ACTUALMENTE:
+${temasActuales}
+
+IMPORTANTE: Usa los temas específicos que está estudiando para buscar recursos MUY CONCRETOS y relevantes.
+
 Por favor proporciona:
 
-1. ANÁLISIS: Un análisis breve del rendimiento (2-3 líneas)
+1. ANÁLISIS: Un análisis breve del rendimiento enfocado en los temas actuales (2-3 líneas)
 
 2. RECURSOS DE ESTUDIO (formato JSON):
 {
   "videos": [
     {
-      "titulo": "título descriptivo del video",
-      "query": "búsqueda exacta para YouTube sobre el tema más importante",
-      "descripcion": "por qué este video ayudará"
+      "titulo": "título específico relacionado con el tema actual",
+      "query": "búsqueda EXACTA para YouTube usando el tema específico del estudiante",
+      "descripcion": "explicación de por qué este video ayudará con el tema"
     }
   ],
   "articulos": [
     {
-      "titulo": "título del recurso",
-      "url": "conceptos clave a buscar en Google Scholar o artículos académicos",
-      "descripcion": "qué aprenderás"
+      "titulo": "título del recurso específico del tema",
+      "url": "términos de búsqueda exactos relacionados con el tema actual",
+      "descripcion": "qué aprenderás específicamente sobre el tema"
     }
   ],
   "libros": [
     {
-      "titulo": "nombre del libro recomendado",
+      "titulo": "nombre del libro con capítulos específicos sobre el tema",
       "autor": "autor si lo conoces",
-      "descripcion": "capítulos o temas específicos a revisar"
+      "descripcion": "capítulos específicos que cubren el tema actual: ${temasActuales}"
     }
   ]
 }
 
-3. PLAN DE ACCIÓN: 3-5 pasos concretos y específicos para mejorar
+3. PLAN DE ACCIÓN: 3-5 pasos concretos y específicos para dominar los temas actuales
 
 Responde SOLO con el JSON de recursos y el análisis en texto plano separados por "---"
 `;
@@ -77,7 +82,7 @@ Responde SOLO con el JSON de recursos y el análisis en texto plano separados po
 
   } catch (error) {
     console.error('Error en Gemini AI:', error);
-    return generarRecomendacionesBackup(materia, nota);
+    return generarRecomendacionesBackup(materia, nota, temasActuales);
   }
 }
 
@@ -114,30 +119,32 @@ function parsearRespuestaIA(texto, materia) {
   }
 }
 
-function generarRecomendacionesBackup(materia, nota) {
+function generarRecomendacionesBackup(materia, nota, temasActuales) {
   // Recomendaciones de respaldo si falla la IA
+  const temaTexto = temasActuales || materia;
+  
   return {
-    analisis: `Necesitas reforzar tus conocimientos en ${materia}. Te recomendamos recursos específicos para mejorar.`,
+    analisis: `Necesitas reforzar tus conocimientos en ${materia}, específicamente en: ${temaTexto}. Te recomendamos recursos específicos para estos temas.`,
     recursos: {
       videos: [
         {
-          titulo: `Tutorial completo de ${materia}`,
-          query: `${materia} tutorial completo español`,
-          descripcion: 'Video introductorio para repasar conceptos fundamentales'
+          titulo: `Tutorial completo de ${temaTexto}`,
+          query: `${temaTexto} tutorial completo español`,
+          descripcion: 'Video introductorio para repasar conceptos fundamentales del tema'
         }
       ],
       articulos: [
         {
-          titulo: `Guía de estudio de ${materia}`,
-          url: `${materia} guía estudio PDF`,
-          descripcion: 'Material de apoyo académico'
+          titulo: `Guía de estudio de ${temaTexto}`,
+          url: `${temaTexto} guía estudio PDF`,
+          descripcion: 'Material de apoyo académico sobre el tema específico'
         }
       ],
       libros: [
         {
-          titulo: `Libro recomendado de ${materia}`,
+          titulo: `Libro recomendado sobre ${temaTexto}`,
           autor: 'Consultar biblioteca',
-          descripcion: 'Texto base de la materia'
+          descripcion: `Capítulos específicos sobre ${temaTexto}`
         }
       ]
     },

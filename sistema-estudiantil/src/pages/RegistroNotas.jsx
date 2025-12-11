@@ -391,6 +391,39 @@ const RegistroNotas = () => {
                         />
                     </div>
 
+                    {/* Tema Actual */}
+                    <div style={{ 
+                        background: '#e3f2fd', 
+                        padding: '15px', 
+                        borderRadius: '8px',
+                        border: '2px solid #2196F3'
+                    }}>
+                        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
+                            🎯 ¿Qué tema estás estudiando actualmente? <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <p style={{ fontSize: '13px', color: '#666', margin: '5px 0 10px 0' }}>
+                            Esto ayuda a la IA a encontrar recursos específicos para ti
+                        </p>
+                        <input
+                            type="text"
+                            name="temaActual"
+                            value={formData.temaActual}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Ej: Derivadas parciales, Árboles binarios, Normalización de bases de datos..."
+                            style={{ 
+                                width: '100%', 
+                                padding: '12px', 
+                                borderRadius: '5px',
+                                border: '2px solid #2196F3',
+                                fontSize: '14px'
+                            }}
+                        />
+                        <p style={{ fontSize: '12px', color: '#999', margin: '5px 0 0 0' }}>
+                            💡 Sé específico: en lugar de "matemáticas", escribe "integrales por sustitución"
+                        </p>
+                    </div>
                     
                     {/* Botón */}
                     <button 
